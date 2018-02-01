@@ -35,24 +35,25 @@ public struct BitArray {
      If `bitCount` is not divided by `Word.bitWidth` evenly, then only some of the bits of the last non-ignored word are used.  Whether the most- or least-significant bits of that last word are counted depends on `bitIterationDirection`.
 
      - Precondition:
-        - The number of elements in `words` times the bit-width per word is at least `bitCount`.
+        - The number of elements in `coreWords` times the bit-width per word is at least `bitCount`.
         - `bitCount >= 0`.
 
-     - Parameter words: The sequence of words that is the source of the stored bits.  The bits from a given word are mapped to being earlier in the overall sequence than the bits from any later word.
+     - Parameter coreWords: The sequence of words that is the source of the stored bits.  The bits from a given word are mapped to being earlier in the overall sequence than the bits from any later word.
      - Parameter bitCount: The number of bits to store.  Any bits in `words` after this cut-off are ignored.
      - Parameter bitIterationDirection: Whether the high-order bits of each word are the ones that should be considered earliest for the overall sequence, or should intra-word iteration start at the low-order bits instead.
 
      - Postcondition:
         - `count == bitCount`.
         - `bits.count == ceil(bitCount / Word.bitWidth)`.
+        - If *s* is a `Sequence` that vends the exploded bits from the elements of `coreWords` (in `bitIterationDirection` order), then `s.elementsEqual(self)`.
      */
-    init<S>(words: S, bitCount: Int, bitIterationDirection: EndianTraversal) where S: Sequence, S.Element == Word {
+    init<S>(coreWords: S, bitCount: Int, bitIterationDirection: EndianTraversal) where S: Sequence, S.Element == Word {
         precondition(bitCount >= 0)
 
         // Copy the words, and compute the remnant length.
         let (bq, br) = bitCount.quotientAndRemainder(dividingBy: Word.bitWidth)
         let expectedWordCount = bq + br.signum()
-        bits = WordArray(words)
+        bits = WordArray(coreWords)
         remnantCount = br
         precondition(expectedWordCount <= bits.count)
 
