@@ -257,6 +257,147 @@ class BitArrayTests: XCTestCase {
         XCTAssertEqual(subject1.remnantCount, 0)
     }
 
+    // Test inspecting the tail of an array.
+    func testTailExtraction() {
+        // No words
+        let empty = BitArray(coreWords: [], bitCount: 0, bitIterationDirection: .hi2lo)
+        var subject1 = empty.tail(bitCount: 0)
+        XCTAssertEqual(subject1.bits, [])
+        XCTAssertEqual(subject1.remnantCount, 0)
+
+        let fdSample32: UInt32 = 0x0F0F0F0F
+        let rdSample32: UInt32 = 0xF0F0F0F0
+        let fdSample: UInt = UInt(fdSample32) << 32 | UInt(fdSample32)
+        let rdSample: UInt = UInt(rdSample32) << 32 | UInt(rdSample32)
+        let threeWords = BitArray(coreWords: [fdSample, rdSample, fdSample], bitCount: 3 * UInt.bitWidth, bitIterationDirection: .hi2lo)
+        subject1 = threeWords.tail(bitCount: 0)
+        XCTAssertEqual(subject1.bits, [])
+        XCTAssertEqual(subject1.remnantCount, 0)
+
+        // Partial word.
+        subject1 = threeWords.tail(bitCount: 16)
+        XCTAssertEqual(subject1.bits, [UInt(0x0F0F) << (UInt.bitWidth - 16)])
+        XCTAssertEqual(subject1.remnantCount, 16)
+
+        // Whole word.
+        subject1 = threeWords.tail(bitCount: UInt.bitWidth)
+        XCTAssertEqual(subject1.bits, [fdSample])
+        XCTAssertEqual(subject1.remnantCount, 0)
+
+        // Whole and partial word.
+        subject1 = threeWords.tail(bitCount: UInt.bitWidth + 16)
+        let whole = (rdSample << (UInt.bitWidth - 16)) | (fdSample >> 16)
+        let part = UInt(0x0F0F) << (UInt.bitWidth - 16)
+        XCTAssertEqual(subject1.bits, [whole, part])
+        XCTAssertEqual(subject1.remnantCount, 16)
+
+        // Everything.
+        subject1 = threeWords.tail(bitCount: UInt.bitWidth * 3)
+        XCTAssertEqual(subject1.bits, [fdSample, rdSample, fdSample])
+        XCTAssertEqual(subject1.remnantCount, 0)
+    }
+
+    // Test removal of the tail of an array.
+    func testTailRemoval() {
+        // Empty.
+        var subject1 = BitArray(coreWords: [], bitCount: 0, bitIterationDirection: .hi2lo)
+        subject1.truncateTail(bitCount: 0)
+        XCTAssertEqual(subject1.bits, [])
+        XCTAssertEqual(subject1.remnantCount, 0)
+
+        let fdSample32: UInt32 = 0x0F0F0F0F
+        let rdSample32: UInt32 = 0xF0F0F0F0
+        let fdSample: UInt = UInt(fdSample32) << 32 | UInt(fdSample32)
+        let rdSample: UInt = UInt(rdSample32) << 32 | UInt(rdSample32)
+        let threeWords = BitArray(coreWords: [fdSample, rdSample, fdSample], bitCount: 3 * UInt.bitWidth, bitIterationDirection: .hi2lo)
+        subject1 = threeWords
+        subject1.truncateTail(bitCount: 0)
+        XCTAssertEqual(subject1.bits, [fdSample, rdSample, fdSample])
+        XCTAssertEqual(subject1.remnantCount, 0)
+
+        // Everything.
+        subject1.truncateTail(bitCount: 3 * UInt.bitWidth)
+        XCTAssertEqual(subject1.bits, [])
+        XCTAssertEqual(subject1.remnantCount, 0)
+
+        // Full word.
+        subject1 = threeWords
+        subject1.truncateTail(bitCount: UInt.bitWidth)
+        XCTAssertEqual(subject1.bits, [fdSample, rdSample])
+        XCTAssertEqual(subject1.remnantCount, 0)
+
+        // Part word, from full words.
+        subject1.truncateTail(bitCount: 16)
+        XCTAssertEqual(subject1.bits, [fdSample, rdSample << 16])
+        XCTAssertEqual(subject1.remnantCount, UInt.bitWidth - 16)
+
+        // Part word, to part word.
+        subject1.truncateTail(bitCount: 8)
+        XCTAssertEqual(subject1.bits, [fdSample, rdSample << 24])
+        XCTAssertEqual(subject1.remnantCount, UInt.bitWidth - 24)
+
+        subject1.truncateTail(bitCount: UInt.bitWidth + 4)
+        XCTAssertEqual(subject1.bits, [fdSample & ~UInt.lowOrderBitsMask(count: 28)])
+        XCTAssertEqual(subject1.remnantCount, UInt.bitWidth - 28)
+    }
+
+    // Test inserting a new tail for an array.
+    func testTailInsertion() {
+        let fdSample32: UInt32 = 0x0F0F0F0F
+        let rdSample32: UInt32 = 0xF0F0F0F0
+        let fdSample: UInt = UInt(fdSample32) << 32 | UInt(fdSample32)
+        let rdSample: UInt = UInt(rdSample32) << 32 | UInt(rdSample32)
+        //let threeWords = BitArray(coreWords: [fdSample, rdSample, fdSample], bitCount: 3 * UInt.bitWidth, bitIterationDirection: .hi2lo)
+        let fdArray = BitArray(coreWords: [fdSample], bitCount: UInt.bitWidth, bitIterationDirection: .hi2lo)
+        let rdArray = BitArray(coreWords: [rdSample], bitCount: UInt.bitWidth, bitIterationDirection: .hi2lo)
+        let empty = BitArray(coreWords: [], bitCount: 0, bitIterationDirection: .hi2lo)
+
+        // Empty.
+        var subject1 = empty
+        subject1.appendTail(empty)
+        XCTAssertEqual(subject1.bits, [])
+        XCTAssertEqual(subject1.remnantCount, 0)
+
+        subject1.appendTail(fdArray)
+        XCTAssertEqual(subject1.bits, [fdSample])
+        XCTAssertEqual(subject1.remnantCount, 0)
+
+        subject1.appendTail(empty)
+        XCTAssertEqual(subject1.bits, [fdSample])
+        XCTAssertEqual(subject1.remnantCount, 0)
+
+        // Word on word.
+        subject1.appendTail(rdArray)
+        XCTAssertEqual(subject1.bits, [fdSample, rdSample])
+        XCTAssertEqual(subject1.remnantCount, 0)
+
+        // Partial word on word.
+        let fdPartial = BitArray(coreWords: [fdSample], bitCount: 16, bitIterationDirection: .hi2lo)
+        subject1.appendTail(fdPartial)
+        XCTAssertEqual(subject1.bits, [fdSample, rdSample, fdSample << (UInt.bitWidth - 16)])
+        XCTAssertEqual(subject1.remnantCount, 16)
+
+        // Partial on partial; same end word.
+        let fdPartialOctet = BitArray(coreWords: [fdSample], bitCount: 8, bitIterationDirection: .hi2lo)
+        subject1.appendTail(fdPartialOctet)
+        XCTAssertEqual(subject1.bits, [fdSample, rdSample, fdSample << (UInt.bitWidth - 24)])
+        XCTAssertEqual(subject1.remnantCount, 24)
+
+        // Partial to full.
+        let fdRemainder = BitArray(coreWords: [fdSample], bitCount: UInt.bitWidth - 24, bitIterationDirection: .hi2lo)
+        subject1.appendTail(fdRemainder)
+        XCTAssertEqual(subject1.bits, [fdSample, rdSample, fdSample])
+        XCTAssertEqual(subject1.remnantCount, 0)
+
+        // Partial on partial; new end word.
+        subject1 = BitArray(coreWords: [fdSample], bitCount: UInt.bitWidth - 8, bitIterationDirection: .hi2lo)
+        XCTAssertEqual(subject1.bits, [fdSample << 8])
+        XCTAssertEqual(subject1.remnantCount, UInt.bitWidth - 8)
+        subject1.appendTail(fdPartial)
+        XCTAssertEqual(subject1.bits, [fdSample, fdSample << (UInt.bitWidth - 8)])
+        XCTAssertEqual(subject1.remnantCount, 8)
+    }
+
     // List of tests for Linux.
     static var allTests = [
         ("testPrimaryInitializer", testPrimaryInitializer),
@@ -265,6 +406,9 @@ class BitArrayTests: XCTestCase {
         ("testHeadExtraction", testHeadExtraction),
         ("testHeadRemoval", testHeadRemoval),
         ("testHeadInsertion", testHeadInsertion),
+        ("testTailExtraction", testTailExtraction),
+        ("testTailRemoval", testTailRemoval),
+        ("testTailInsertion", testTailInsertion),
     ]
 
 }

@@ -184,4 +184,60 @@ extension BitArray {
         bits.insert(contentsOf: head.bits.prefix(head.wholeWordCount), at: bits.startIndex)
     }
 
+    /**
+     Returns a new instance with the suffix of the receiver.
+
+     - Precondition: `0 <= bitCount <= count`.
+
+     - Parameter bitCount: The number of bits copied from the end of `self`.
+
+     - Returns: `BitArray(self.suffix(bitCount))`.
+     */
+    func tail(bitCount: Int) -> BitArray {
+        let count = wholeWordCount * Word.bitWidth + remnantCount
+        var copy = self
+        copy.truncateHead(bitCount: count - bitCount)
+        return copy
+    }
+    /**
+     Removes the given number of elements from the end of the receiver.
+
+     - Precondition: `0 <= bitCount <= count`.
+
+     - Parameter bitCount: The number of bits removed from the end of `self`.
+
+     - Postcondition: Same as `self.removeLast(bitCount)`.
+     */
+    mutating func truncateTail(bitCount: Int) {
+        let count = wholeWordCount * Word.bitWidth + remnantCount
+        precondition(0...count ~= bitCount)
+
+        let headCount = count - bitCount
+        let (hq, hr) = headCount.quotientAndRemainder(dividingBy: Word.bitWidth)
+        var truncationIndex = bits.index(bits.startIndex, offsetBy: hq)
+        if hr != 0 {
+            assert(truncationIndex < bits.endIndex)
+            bits[truncationIndex] &= Word.highOrderBitsMask(count: hr)
+            truncationIndex = bits.index(after: truncationIndex)
+        }
+        bits.removeSubrange(truncationIndex...)
+        remnantCount = hr
+    }
+    /**
+     Inserts the elements of `tail` to the end of the receiver.
+
+     - Parameter tail: The source of the new elements.
+
+     - Postcondition:
+        - `count == oldSelf.count + tail.count`.
+        - `self.prefix(oldSelf.count) == oldSelf`.
+        - `self.suffix(tail.count) == tail`.
+     */
+    mutating func appendTail(_ tail: BitArray) {
+        var copy = tail
+        copy.prependHead(self)
+        bits.replaceSubrange(bits.startIndex..., with: copy.bits)  // Should preserve capacity.
+        remnantCount = copy.remnantCount
+    }
+
 }
