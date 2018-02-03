@@ -67,4 +67,67 @@ extension FixedWidthInteger {
         return ~lowOrderBitsMask(count: bitWidth - count)
     }
 
+    /**
+     Pushes out and returns the receiver's high-order bits while the low-order bits move up to make room for bits inserted at the least-significant end.
+
+     - Precondition: `0 <= count <= bitWidth`.
+
+     - Parameter source: The value whose high-order bits will become the new low-order bits of `self`.
+     - Parameter count: The number of bits from `source` pushed into `self`, and the number of bits formerly from `self` removed.
+
+     - Returns: The previous value of `self` with the lower `bitWidth - count` bits zeroed out.
+
+     - Postcondition:
+        - `self >> count == oldSelf & ((2 ** (bitWidth - count)) - 1)`.
+        - `self & ((2 ** count) - 1) == (source >> (bitWidth - count)) & ((2 ** count) - 1)`.
+     */
+    mutating func pushLowOrderBits(fromHighOrderBitsOf source: Self, count: Int) -> Self {
+        switch count {
+        case bitWidth:
+            defer { self = source }
+            return self
+        case 1..<bitWidth:
+            defer {
+                self <<= count
+                replaceBits(with: source >> (bitWidth - count), forOnly: Self.lowOrderBitsMask(count: count))
+            }
+            return self & Self.highOrderBitsMask(count: count)
+        case 0:
+            return 0
+        default:
+            preconditionFailure("Illegal replacing bit-width used")
+        }
+    }
+    /**
+     Pushes out and returns the receiver's low-order bits while the high-order bits move down to make room for bits inserted at the most-significant end.
+
+     - Precondition: `0 <= count <= bitWidth`.
+
+     - Parameter source: The value whose low-order bits will become the new high-order bits of `self`.
+     - Parameter count: The number of bits from `source` pushed into `self`, and the number of bits formerly from `self` removed.
+
+     - Returns: The previous value of `self` with the upper `bitWidth - count` bits zeroed out.
+
+     - Postcondition:
+        - `self << count == oldSelf & ~((2 ** count) - 1)`.
+        - `(self >> (bitWidth - count)) & ((2 ** count) - 1 == source & ((2 ** count) - 1)`.
+     */
+    mutating func pushHighOrderBits(fromLowOrderBitsOf source: Self, count: Int) -> Self {
+        switch count {
+        case bitWidth:
+            defer { self = source }
+            return self
+        case 1..<bitWidth:
+            defer {
+                self >>= count
+                replaceBits(with: source << (bitWidth - count), forOnly: Self.highOrderBitsMask(count: count))
+            }
+            return self & Self.lowOrderBitsMask(count: count)
+        case 0:
+            return 0
+        default:
+            preconditionFailure("Illegal replacing bit-width used")
+        }
+    }
+
 }

@@ -75,3 +75,113 @@ public struct BitArray {
     }
 
 }
+
+// MARK: Splitting & Joining
+
+extension BitArray {
+
+    /// The index of the word holding any remnant bits (i.e. the last word unless no remnant is needed).
+    var remnantWordIndex: WordArray.Index? {
+        return remnantCount != 0 ? bits.index(before: bits.endIndex) : nil
+    }
+    /// The count of fully used words, i.e. before any remnant.
+    var wholeWordCount: WordArray.IndexDistance {
+        return bits.distance(from: bits.startIndex, to: remnantWordIndex ?? bits.endIndex)
+    }
+
+    /**
+     Returns a new instance with the prefix of the receiver.
+
+     - Precondition: `0 <= bitCount <= count`.
+
+     - Parameter bitCount: The number of bits copied from the beginning of `self`.
+
+     - Returns: `BitArray(self.prefix(bitCount))`.
+     */
+    func head(bitCount: Int) -> BitArray {
+        let (bq, br) = bitCount.quotientAndRemainder(dividingBy: Word.bitWidth)
+        precondition((bq, br) <= (wholeWordCount, remnantCount))
+
+        return BitArray(coreWords: bits, bitCount: bitCount, bitIterationDirection: .hi2lo)
+    }
+    /**
+     Removes the given number of elements from the start of the receiver.
+
+     - Precondition: `0 <= bitCount <= count`.
+
+     - Parameter bitCount: The number of bits removed from the beginning of `self`.
+
+     - Postcondition: Same as `self.removeFirst(bitCount)`.
+     */
+    mutating func truncateHead(bitCount: Int) {
+        let (bq, br) = bitCount.quotientAndRemainder(dividingBy: Word.bitWidth)
+        precondition(bitCount >= 0)
+        precondition((bq, br) <= (wholeWordCount, remnantCount))
+
+        // Remove the whole words.
+        bits.removeFirst(bq)
+
+        // Remove the head's remnant by moving all the later bits forward.
+        var pushedOutBits: Word = 0
+        for i in bits.indices.reversed() {
+            pushedOutBits = bits[i].pushLowOrderBits(fromHighOrderBitsOf: pushedOutBits, count: br)
+        }
+
+        // Purge extraneous word if the shift-forward moved the tail's remnant, or created one.
+        let hadRemnant = remnantCount != 0
+        remnantCount -= br
+        if remnantCount <= 0 {
+            if hadRemnant {
+                let extraneousWord = bits.removeLast()
+                assert(extraneousWord == 0)
+            } else {
+                assert((remnantCount < 0) == (br > 0))
+            }
+            if remnantCount < 0 {
+                remnantCount += Word.bitWidth
+            }
+        }
+    }
+    /**
+     Inserts the elements of `head` to the start of the receiver.
+
+     - Parameter head: The source of the new elements.
+
+     - Postcondition:
+        - `count == oldSelf.count + head.count`.
+        - `self.prefix(head.count) == head`.
+        - `self.suffix(oldSelf.count) == oldSelf`.
+     */
+    mutating func prependHead(_ head: BitArray) {
+        guard !head.bits.isEmpty else { return }
+        guard !bits.isEmpty else {
+            bits.replaceSubrange(bits.startIndex..., with: head.bits)
+            remnantCount = head.remnantCount
+            return
+        }
+
+        // Move existing bits back for the head's remnant.
+        if let hrwi = head.remnantWordIndex {
+            assert(head.remnantCount > 0)
+
+            // Make room for a new word if both instances remnants are long enough.
+            if remnantCount == 0 || head.remnantCount + remnantCount > Word.bitWidth {
+                bits.append(0)
+            }
+
+            // Copy the head's remnant in while shifting the existing bits back.
+            var pushedOutBits = head.bits[hrwi] >> (Word.bitWidth - head.remnantCount)
+            for i in bits.indices {
+                pushedOutBits = bits[i].pushHighOrderBits(fromLowOrderBitsOf: pushedOutBits, count: head.remnantCount)
+            }
+            remnantCount += head.remnantCount
+            remnantCount %= Word.bitWidth
+        } else {
+            assert(head.remnantCount == 0)
+        }
+
+        // Prepend the whole words from the head.
+        bits.insert(contentsOf: head.bits.prefix(head.wholeWordCount), at: bits.startIndex)
+    }
+
+}

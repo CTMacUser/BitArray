@@ -31,9 +31,19 @@ class BinaryInteger_ExtensionsTests: XCTestCase {
         XCTAssertEqual(Int16.lowOrderBitsMask(count: 14), 0x3FFF)
     }
 
+    // Test assigning selected bits.
+    func testReplacingBits() {
+        var sample1: UInt8 = 0x5D
+        let oldSample1Targeted = sample1.replaceBits(with: 0xAA, forOnly: 0xF0)
+        XCTAssertEqual(sample1, 0xAD)
+        XCTAssertEqual(oldSample1Targeted, 0x50)
+    }
+
     // List of tests for Linux.
     static var allTests = [
-        ("testLowOrderBitsMask", testLowOrderBitsMask)
+        ("testLowOrderBitsMask", testLowOrderBitsMask),
+
+        ("testReplacingBits", testReplacingBits),
     ]
 
 }

@@ -33,4 +33,26 @@ extension BinaryInteger {
         return mask
     }
 
+    /**
+     Assigns the given source to the receiver, but only at the masked bit locations.
+
+     - Parameter source: The new value(s) to assign to `self`'s bits.
+     - Parameter mask: Which bits of `source` get assigned to `self`.  Only the bit positions set in `mask` have those corresponding bits in `self` get affected by `source`.
+
+     - Returns: The previous values of the bits of `self` targeted by `mask`.  The untargeted bits are 0.
+
+     - Postcondition:
+        - `self & mask == source & mask`.
+        - `self & ~mask == oldSelf & ~mask`.
+     */
+    @discardableResult
+    mutating func replaceBits(with source: Self, forOnly mask: Self) -> Self {
+        defer {
+            self &= ~mask
+            self |= source & mask
+        }
+
+        return self & mask
+    }
+
 }

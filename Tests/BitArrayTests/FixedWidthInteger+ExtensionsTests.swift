@@ -90,12 +90,51 @@ class FixedWidthInteger_ExtensionsTests: XCTestCase {
         XCTAssertEqual(Int16.highOrderBitsMask(count: 14), Int16(bitPattern: 0xFFFC))
     }
 
+    // Test least-significant bit push-up.
+    func testLowOrderBitPushing() {
+        var sample1: UInt8 = 0xAD
+        let trial1 = sample1.pushLowOrderBits(fromHighOrderBitsOf: 0xBB, count: 4)
+        XCTAssertEqual(sample1, 0xDB)
+        XCTAssertEqual(trial1, 0xA0)
+
+        // All bits.
+        let trial2 = sample1.pushLowOrderBits(fromHighOrderBitsOf: 0xEC, count: 8)
+        XCTAssertEqual(sample1, 0xEC)
+        XCTAssertEqual(trial2, 0xDB)
+
+        // No bits.
+        let trial3 = sample1.pushLowOrderBits(fromHighOrderBitsOf: 0xFF, count: 0)
+        XCTAssertEqual(sample1, 0xEC)
+        XCTAssertEqual(trial3, 0)
+    }
+
+    // Test most-significant bit push-down.
+    func testHighOrderBitPushing() {
+        var sample1: UInt8 = 0xAD
+        let trial1 = sample1.pushHighOrderBits(fromLowOrderBitsOf: 0xBB, count: 4)
+        XCTAssertEqual(sample1, 0xBA)
+        XCTAssertEqual(trial1, 0x0D)
+
+        // All bits.
+        let trial2 = sample1.pushHighOrderBits(fromLowOrderBitsOf: 0xEC, count: 8)
+        XCTAssertEqual(sample1, 0xEC)
+        XCTAssertEqual(trial2, 0xBA)
+
+        // No bits.
+        let trial3 = sample1.pushHighOrderBits(fromLowOrderBitsOf: 0xFF, count: 0)
+        XCTAssertEqual(sample1, 0xEC)
+        XCTAssertEqual(trial3, 0)
+    }
+
     // List of tests for Linux.
     static var allTests = [
         ("testBitReversal", testBitReversal),
         ("testBitReversed", testBitReversed),
 
         ("testHighOrderBitsMask", testHighOrderBitsMask),
+
+        ("testLowOrderBitPushing", testLowOrderBitPushing),
+        ("testHighOrderBitPushing", testHighOrderBitPushing),
     ]
 
 }
