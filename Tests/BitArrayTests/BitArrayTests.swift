@@ -15,6 +15,96 @@ import XCTest
 
 class BitArrayTests: XCTestCase {
 
+    // An unsigned integer type bigger than any of the standard ones.
+    struct UInt72: FixedWidthInteger, UnsignedInteger {
+        // Implementation properties
+        var high: UInt8
+        var low: UInt64
+
+        // Main initializer
+        init(highOrderBits hi: UInt8, lowOrderBits lo: UInt64) { (high, low) = (hi, lo) }
+
+        // FixedWidthInteger secret initializer
+        init(_truncatingBits bits: UInt) { self.init(highOrderBits: 0, lowOrderBits: UInt64(bits)) }
+
+        // FixedWidthInteger properties
+        var byteSwapped: UInt72 {
+            return UInt72(highOrderBits: UInt8(truncatingIfNeeded: low), lowOrderBits: (low.byteSwapped << 8) | UInt64(high))
+        }
+        var leadingZeroBitCount: Int { return high != 0 ? high.leadingZeroBitCount : 8 + low.leadingZeroBitCount }
+        var nonzeroBitCount: Int { return high.nonzeroBitCount + low.nonzeroBitCount }
+
+        static var bitWidth: Int { return 72 }
+
+        // BinaryInteger properties
+        var trailingZeroBitCount: Int { return low != 0 ? low.trailingZeroBitCount : high.trailingZeroBitCount + 64 }
+        var words: [UInt] { return Array(low.words) + high.words }
+
+        // ExpressibleByIntegerLiteral and Hashable support
+        init(integerLiteral value: UInt) { self.init(_truncatingBits: value) }
+
+        var hashValue: Int { return String(describing: self).hashValue }
+
+        // BinaryInteger floating-point initializer
+        init<T>(_ source: T) where T : BinaryFloatingPoint { fatalError("\(#function) not implemented") }
+
+        // FixedWidthInteger core math
+        func addingReportingOverflow(_ rhs: UInt72) -> (partialValue: UInt72, overflow: Bool) {
+            fatalError("\(#function) not implemented")
+        }
+        func dividedReportingOverflow(by rhs: UInt72) -> (partialValue: UInt72, overflow: Bool) {
+            fatalError("\(#function) not implemented")
+        }
+        func dividingFullWidth(_ dividend: (high: UInt72, low: UInt72)) -> (quotient: UInt72, remainder: UInt72) {
+            fatalError("\(#function) not implemented")
+        }
+        func multipliedReportingOverflow(by rhs: UInt72) -> (partialValue: UInt72, overflow: Bool) {
+            fatalError("\(#function) not implemented")
+        }
+        func multipliedFullWidth(by other: UInt72) -> (high: UInt72, low: UInt72) {
+            fatalError("\(#function) not implemented")
+        }
+        func remainderReportingOverflow(dividingBy rhs: UInt72) -> (partialValue: UInt72, overflow: Bool) {
+            fatalError("\(#function) not implemented")
+        }
+        func subtractingReportingOverflow(_ rhs: UInt72) -> (partialValue: UInt72, overflow: Bool) {
+            fatalError("\(#function) not implemented")
+        }
+
+        // BinaryInteger operators
+        static func %(lhs: UInt72, rhs: UInt72) -> UInt72 {
+            let results = lhs.remainderReportingOverflow(dividingBy: rhs)
+            assert(!results.overflow)
+            return results.partialValue
+        }
+        static func *(lhs: UInt72, rhs: UInt72) -> UInt72 {
+            let results = lhs.multipliedReportingOverflow(by: rhs)
+            assert(!results.overflow)
+            return results.partialValue
+        }
+        static func +(lhs: UInt72, rhs: UInt72) -> UInt72 {
+            let results = lhs.addingReportingOverflow(rhs)
+            assert(!results.overflow)
+            return results.partialValue
+        }
+        static func -(lhs: UInt72, rhs: UInt72) -> UInt72 {
+            let results = lhs.subtractingReportingOverflow(rhs)
+            assert(!results.overflow)
+            return results.partialValue
+        }
+        static func /(lhs: UInt72, rhs: UInt72) -> UInt72 {
+            let results = lhs.dividedReportingOverflow(by: rhs)
+            assert(!results.overflow)
+            return results.partialValue
+        }
+
+        static func %=(lhs: inout UInt72, rhs: UInt72) { lhs = lhs % rhs }
+        static func *=(lhs: inout UInt72, rhs: UInt72) { lhs = lhs * rhs }
+        static func +=(lhs: inout UInt72, rhs: UInt72) { lhs = lhs + rhs }
+        static func -=(lhs: inout UInt72, rhs: UInt72) { lhs = lhs - rhs }
+        static func /=(lhs: inout UInt72, rhs: UInt72) { lhs = lhs / rhs }
+    }
+
     // Test the original initializer.
     func testPrimaryInitializer() {
         // No words.
@@ -347,7 +437,6 @@ class BitArrayTests: XCTestCase {
         let rdSample32: UInt32 = 0xF0F0F0F0
         let fdSample: UInt = UInt(fdSample32) << 32 | UInt(fdSample32)
         let rdSample: UInt = UInt(rdSample32) << 32 | UInt(rdSample32)
-        //let threeWords = BitArray(coreWords: [fdSample, rdSample, fdSample], bitCount: 3 * UInt.bitWidth, bitIterationDirection: .hi2lo)
         let fdArray = BitArray(coreWords: [fdSample], bitCount: UInt.bitWidth, bitIterationDirection: .hi2lo)
         let rdArray = BitArray(coreWords: [rdSample], bitCount: UInt.bitWidth, bitIterationDirection: .hi2lo)
         let empty = BitArray(coreWords: [], bitCount: 0, bitIterationDirection: .hi2lo)
@@ -398,6 +487,90 @@ class BitArrayTests: XCTestCase {
         XCTAssertEqual(subject1.remnantCount, 8)
     }
 
+    // Test initialization from an unsigned integer's bits.
+    func testWordInitialization() {
+        // A byte.
+        let octet: UInt8 = 0xA7
+        var subject1 = BitArray(word: octet, bitCount: 8, bitIterationDirection: .hi2lo)
+        XCTAssertEqual(subject1.bits, [UInt(0xA7) << (UInt.bitWidth - 8)])
+        XCTAssertEqual(subject1.remnantCount, 8)
+        subject1 = BitArray(word: octet, bitCount: 8, bitIterationDirection: .lo2hi)
+        XCTAssertEqual(subject1.bits, [UInt(0xE5) << (UInt.bitWidth - 8)])
+        XCTAssertEqual(subject1.remnantCount, 8)
+
+        // Part of a byte.
+        subject1 = BitArray(word: octet, bitCount: 3, bitIterationDirection: .hi2lo)
+        XCTAssertEqual(subject1.bits, [UInt(5) << (UInt.bitWidth - 3)])
+        XCTAssertEqual(subject1.remnantCount, 3)
+        subject1 = BitArray(word: octet, bitCount: 3, bitIterationDirection: .lo2hi)
+        XCTAssertEqual(subject1.bits, [UInt(7) << (UInt.bitWidth - 3)])
+        XCTAssertEqual(subject1.remnantCount, 3)
+
+        // A word.
+        let fdSample32: UInt32 = 0x0F0F0F0F
+        let rdSample32: UInt32 = 0xF0F0F0F0
+        let fdSample: UInt = UInt(fdSample32) << 32 | UInt(fdSample32)
+        let rdSample: UInt = UInt(rdSample32) << 32 | UInt(rdSample32)
+        subject1 = BitArray(word: fdSample, bitCount: UInt.bitWidth, bitIterationDirection: .hi2lo)
+        XCTAssertEqual(subject1.bits, [fdSample])
+        XCTAssertEqual(subject1.remnantCount, 0)
+        subject1 = BitArray(word: fdSample, bitCount: UInt.bitWidth, bitIterationDirection: .lo2hi)
+        XCTAssertEqual(subject1.bits, [rdSample])
+        XCTAssertEqual(subject1.remnantCount, 0)
+
+        // Part of a word.
+        subject1 = BitArray(word: fdSample, bitCount: 16, bitIterationDirection: .hi2lo)
+        XCTAssertEqual(subject1.bits, [fdSample << (UInt.bitWidth - 16)])
+        XCTAssertEqual(subject1.remnantCount, 16)
+        subject1 = BitArray(word: fdSample, bitCount: 16, bitIterationDirection: .lo2hi)
+        XCTAssertEqual(subject1.bits, [rdSample << (UInt.bitWidth - 16)])
+        XCTAssertEqual(subject1.remnantCount, 16)
+
+        // Over a word.
+        let longword = UInt72(highOrderBits: 0xAA, lowOrderBits: 0xEEEEEEEEEEEEEEEE)
+        subject1 = BitArray(word: longword, bitCount: 72, bitIterationDirection: .hi2lo)
+        let longLow = UInt(truncatingIfNeeded: longword.low)
+        let longHigh = (UInt(longword.high) << (UInt.bitWidth - 8)) | (longLow >> 8)
+        XCTAssertEqual(subject1.bits.first, longHigh)
+        XCTAssertEqual(subject1.bits.last, longLow << (UInt.bitWidth - 8))
+        XCTAssertEqual(subject1.bits.count, 72 / UInt.bitWidth + 1)
+        XCTAssertEqual(subject1.remnantCount, 8)
+        subject1 = BitArray(word: longword, bitCount: 72, bitIterationDirection: .lo2hi)
+        let longLowR = UInt(truncatingIfNeeded: UInt64(0x7777777777777777))
+        let longLowH = (longLowR << 8) | UInt(UInt64(0x55))
+        XCTAssertEqual(subject1.bits.first, longLowR)
+        XCTAssertEqual(subject1.bits.last, longLowH << (UInt.bitWidth - 8))
+        XCTAssertEqual(subject1.bits.count, 72 / UInt.bitWidth + 1)
+        XCTAssertEqual(subject1.remnantCount, 8)
+    }
+
+    // Test initialization from the bits from a sequence of unsigned integers.
+    func testWordSequenceInitialization() {
+        // Three bytes.
+        let sample1: [UInt8] = [0xEE, 0xAA, 0x33]
+        var subject1 = BitArray(words: sample1, bitCount: 24, bitIterationDirection: .hi2lo)
+        XCTAssertEqual(subject1.bits, [UInt(0xEEAA33) << (UInt.bitWidth - 24)])
+        XCTAssertEqual(subject1.remnantCount, 24)
+
+        // Reverse bit-reading.
+        subject1 = BitArray(words: sample1, bitCount: 24, bitIterationDirection: .lo2hi)
+        XCTAssertEqual(subject1.bits, [UInt(0x7755CC) << (UInt.bitWidth - 24)])
+        XCTAssertEqual(subject1.remnantCount, 24)
+
+        // Partial.
+        subject1 = BitArray(words: sample1, bitCount: 12, bitIterationDirection: .hi2lo)
+        XCTAssertEqual(subject1.bits, [UInt(0xEEA) << (UInt.bitWidth - 12)])
+        XCTAssertEqual(subject1.remnantCount, 12)
+        subject1 = BitArray(words: sample1, bitCount: 12, bitIterationDirection: .lo2hi)
+        XCTAssertEqual(subject1.bits, [UInt(0x775) << (UInt.bitWidth - 12)])
+        XCTAssertEqual(subject1.remnantCount, 12)
+
+        // Empty.
+        subject1 = BitArray(words: [] as [UInt72], bitCount: 0, bitIterationDirection: .lo2hi)
+        XCTAssertEqual(subject1.bits, [])
+        XCTAssertEqual(subject1.remnantCount, 0)
+    }
+
     // List of tests for Linux.
     static var allTests = [
         ("testPrimaryInitializer", testPrimaryInitializer),
@@ -409,6 +582,9 @@ class BitArrayTests: XCTestCase {
         ("testTailExtraction", testTailExtraction),
         ("testTailRemoval", testTailRemoval),
         ("testTailInsertion", testTailInsertion),
+
+        ("testWordInitialization", testWordInitialization),
+        ("testWordSequenceInitialization", testWordSequenceInitialization),
     ]
 
 }

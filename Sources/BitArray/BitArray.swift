@@ -28,7 +28,7 @@ public struct BitArray {
     private(set) var remnantCount: Int
 
     /**
-     Creates an instance whose bits are sourced from the given sequence of words.
+     Creates an instance whose bits are sourced from the given sequence of an exact type of word.
 
      This is the primary initializer; all others call this one, directly or indirectly.
 
@@ -238,6 +238,69 @@ extension BitArray {
         copy.prependHead(self)
         bits.replaceSubrange(bits.startIndex..., with: copy.bits)  // Should preserve capacity.
         remnantCount = copy.remnantCount
+    }
+
+}
+
+// MARK: Word-Exploding Initialization
+
+extension BitArray {
+
+    /**
+     Creates an instance whose bits are sourced from the given word.
+
+     - Precondition: `0 <= bitCount <= word.bitWidth`.
+
+     - Parameter word: The source of the stored bits.
+     - Parameter bitCount: The number of bits to store.  After this many bits have been read from `word` for their Boolean values, the remainder are ignored.
+     - Parameter bitIterationDirection: Whether the high-order bits of `word` are the ones that should be read first, proceeding towards the low-order bits, or vice versa.
+
+     - Postcondition:
+        - `count == bitCount`.
+        - if *s* is a `Sequence` that vends the exploded bits of `word` (in `bitIterationDirection` order), then `s.prefix(bitCount).elementsEqual(self)`.
+     */
+    public init<W: UnsignedInteger>(word: W, bitCount: Int, bitIterationDirection: EndianTraversal) {
+        precondition(0...word.bitWidth ~= bitCount)
+
+        let coreWords: WordArray
+        switch bitIterationDirection {
+        case .lo2hi:
+            coreWords = WordArray(word.words)
+        case .hi2lo:
+            let (wbwq, wbwr) = word.bitWidth.quotientAndRemainder(dividingBy: Word.bitWidth)
+            let wordWords = WordArray(word.words)
+            assert(wbwq + wbwr.signum() == wordWords.count)
+            let highOrderWordBitCount = wbwr != 0 ? wbwr : wbwq.signum() * Word.bitWidth
+            let head = BitArray(coreWords: [wordWords.last! << (Word.bitWidth - highOrderWordBitCount)], bitCount: highOrderWordBitCount, bitIterationDirection: .hi2lo)
+            var tail = BitArray(coreWords: wordWords.dropLast().reversed(), bitCount: Word.bitWidth * (wordWords.count - 1), bitIterationDirection: .hi2lo)
+            tail.prependHead(head)
+            coreWords = tail.bits
+        }
+        self.init(coreWords: coreWords, bitCount: bitCount, bitIterationDirection: bitIterationDirection)
+    }
+
+    /**
+     Creates an instance whose bits are sourced from the given sequence of words.
+
+     If `bitCount` is not divided by `S.Element.bitWidth` evenly, then only some of the bits of the last non-ignored word are used.  Whether the most- or least-significant bits of that last word are counted depends on `bitIterationDirection`.
+
+     - Precondition: `0 <= bitCount <= words.map { $0.bitWidth }.reduce(0, +)`.
+
+     - Parameter words: The sequence of words that are the source of the stored bits.  The bits from a given word are mapped to being earlier in this sequence than the bits from any later word.
+     - Parameter bitCount: The number of bits to store.  After enough bits have been read from elements of `words`, the remaining bits of the last scanned word (if any), and the entirety of all subsequent words, are ignored.
+     - Parameter bitIterationDirection: Whether within a word the high-order bits are scanned first for this sequence, proceeding towards the low-order bits, or vice versa.  If the last word scanned is done partially, the bits with orders at the far end of the given direction are ignored.
+
+     - Postcondition:
+        - `count == bitCount`.
+        - If *s* is a `Sequence` that vends the exploded bits from the elements of `words` (in `bitIterationDirection` order), then `s.elementsEqual(self)`.
+     */
+    public init<S>(words: S, bitCount: Int, bitIterationDirection: EndianTraversal) where S: Sequence, S.Element: UnsignedInteger {
+        let bitArraySlivers = words.map { BitArray(word: $0, bitCount: $0.bitWidth, bitIterationDirection: bitIterationDirection) }
+        var scratch = BitArray(coreWords: [], bitCount: 0, bitIterationDirection: bitIterationDirection)
+        for s in bitArraySlivers.reversed() {
+            scratch.prependHead(s)
+        }
+        self = scratch.head(bitCount: bitCount)
     }
 
 }
