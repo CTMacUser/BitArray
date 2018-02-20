@@ -72,6 +72,12 @@ class BitArrayTests: XCTestCase {
         }
 
         // BinaryInteger operators
+        static prefix func ~(x: UInt72) -> UInt72 { return UInt72(highOrderBits: ~x.high, lowOrderBits: ~x.low) }
+
+        static func &=(lhs: inout UInt72, rhs: UInt72) { lhs.high &= rhs.high ; lhs.low &= rhs.low }
+        static func ^=(lhs: inout UInt72, rhs: UInt72) { lhs.high ^= rhs.high ; lhs.low ^= rhs.low }
+        static func |=(lhs: inout UInt72, rhs: UInt72) { lhs.high |= rhs.high ; lhs.low |= rhs.low }
+
         static func %(lhs: UInt72, rhs: UInt72) -> UInt72 {
             let results = lhs.remainderReportingOverflow(dividingBy: rhs)
             assert(!results.overflow)
