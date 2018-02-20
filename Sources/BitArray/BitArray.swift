@@ -304,3 +304,31 @@ extension BitArray {
     }
 
 }
+
+// MARK: Diagnostic Output
+
+extension BitArray: CustomDebugStringConvertible {
+
+    public var debugDescription: String {
+        // Sneak in an invariant check.
+        precondition(0..<Word.bitWidth ~= remnantCount)  // Remnant count in range
+        precondition(!bits.isEmpty || remnantCount == 0)  // Remant count set correctly when remnant doesn't exist
+        precondition(remnantCount == 0 || (bits[remnantWordIndex!] << remnantCount == 0))  // Unused bits in remnant are unset
+
+        // Print all the bits of each fully used word.
+        var bitsStrings = bits.prefix(wholeWordCount).map { $0.fullHexadecimalString }
+
+        // If the last word is partially used, list how many of its bits are used.
+        if let remnantIndex = remnantWordIndex {
+            let (rq, rr) = remnantCount.quotientAndRemainder(dividingBy: 4)
+            let remnantHexDigitCount = rq + rr.signum()
+            let remnantShortWordValue = bits[remnantIndex] >> (Word.bitWidth - remnantCount)
+            let remnantDisplayString = String(remnantShortWordValue, radix: 16, uppercase: true).paddingPrepended("0", totalCount: remnantHexDigitCount) + " (\(remnantCount))"
+            bitsStrings.append(remnantDisplayString)
+        }
+
+        // Comma-separate each word during display.
+        return "BitArray([\(bitsStrings.joined(separator: ", "))])"
+    }
+
+}

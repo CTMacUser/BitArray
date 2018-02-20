@@ -126,6 +126,22 @@ class FixedWidthInteger_ExtensionsTests: XCTestCase {
         XCTAssertEqual(trial3, 0)
     }
 
+    // Test hexadecimal digit width.
+    func testHexadecimalDigitCount() {
+        XCTAssertEqual(UInt8.hexadecimalDigitCount, 2)
+        XCTAssertEqual(UInt16.hexadecimalDigitCount, 4)
+        XCTAssertEqual(UInt32.hexadecimalDigitCount, 8)
+        XCTAssertEqual(UInt64.hexadecimalDigitCount, 16)
+    }
+
+    // Test hexadecimal full-width string.
+    func testFullHexadecimalString() {
+        XCTAssertEqual((31 as UInt8).fullHexadecimalString, "1F")
+        XCTAssertEqual((31 as UInt16).fullHexadecimalString, "001F")
+        XCTAssertEqual((31 as UInt32).fullHexadecimalString, "0000001F")
+        XCTAssertEqual((31 as UInt64).fullHexadecimalString, "000000000000001F")
+    }
+
     // List of tests for Linux.
     static var allTests = [
         ("testBitReversal", testBitReversal),
@@ -135,6 +151,9 @@ class FixedWidthInteger_ExtensionsTests: XCTestCase {
 
         ("testLowOrderBitPushing", testLowOrderBitPushing),
         ("testHighOrderBitPushing", testHighOrderBitPushing),
+
+        ("testHexadecimalDigitCount", testHexadecimalDigitCount),
+        ("testFullHexadecimalString", testFullHexadecimalString),
     ]
 
 }

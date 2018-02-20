@@ -16,6 +16,8 @@
 
 extension FixedWidthInteger where Self: UnsignedInteger {
 
+    // MARK: Bit Reversal
+
     /**
      Returns this value except its bits are in reverse order.
 
@@ -44,6 +46,19 @@ extension FixedWidthInteger where Self: UnsignedInteger {
      */
     mutating func bitReverse() {
         self = bitReversed()
+    }
+
+    // MARK: Hexadecimal Output
+
+    /// The minimum count of base-16 digits needed to fully display any value of this type.
+    static var hexadecimalDigitCount: Int {
+        let (bq, br) = bitWidth.quotientAndRemainder(dividingBy: 4)
+        return bq + br.signum()
+    }
+
+    /// This value in hexadecimal, using its full width.
+    var fullHexadecimalString: String {
+        return String(self, radix: 16, uppercase: true).paddingPrepended("0", totalCount: Self.hexadecimalDigitCount)
     }
 
 }

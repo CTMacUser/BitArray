@@ -571,6 +571,63 @@ class BitArrayTests: XCTestCase {
         XCTAssertEqual(subject1.remnantCount, 0)
     }
 
+    // Test printing of debugging data.
+    func testDebugPrinting() {
+        // Empty.
+        var subject1 = BitArray(coreWords: [], bitCount: 0, bitIterationDirection: .hi2lo)
+        XCTAssertEqual(String(reflecting: subject1), "BitArray([])")
+
+        // Single bit.
+        subject1 = BitArray(word: 0 as UInt8, bitCount: 1, bitIterationDirection: .hi2lo)
+        XCTAssertEqual(String(reflecting: subject1), "BitArray([0 (1)])")
+        subject1 = BitArray(word: 0 as UInt8, bitCount: 1, bitIterationDirection: .lo2hi)
+        XCTAssertEqual(String(reflecting: subject1), "BitArray([0 (1)])")
+        subject1 = BitArray(word: (1 as UInt8) << 7, bitCount: 1, bitIterationDirection: .hi2lo)
+        XCTAssertEqual(String(reflecting: subject1), "BitArray([1 (1)])")
+        subject1 = BitArray(word: 1 as UInt8, bitCount: 1, bitIterationDirection: .lo2hi)
+        XCTAssertEqual(String(reflecting: subject1), "BitArray([1 (1)])")
+
+        // Sub-byte.
+        subject1 = BitArray(word: 0x5E as UInt8, bitCount: 6, bitIterationDirection: .hi2lo)
+        XCTAssertEqual(String(reflecting: subject1), "BitArray([17 (6)])")
+        subject1 = BitArray(word: 0x5E as UInt8, bitCount: 6, bitIterationDirection: .lo2hi)
+        XCTAssertEqual(String(reflecting: subject1), "BitArray([1E (6)])")
+
+        // Sub-word.
+        subject1 = BitArray(word: 0xAE91 as UInt16, bitCount: 16, bitIterationDirection: .hi2lo)
+        XCTAssertEqual(String(reflecting: subject1), "BitArray([AE91 (16)])")
+        subject1 = BitArray(word: 0xAE91 as UInt16, bitCount: 16, bitIterationDirection: .lo2hi)
+        XCTAssertEqual(String(reflecting: subject1), "BitArray([8975 (16)])")
+
+        // A word.
+        let fdSample32: UInt32 = 0x0F0F0F0F
+        let fdSample: UInt = UInt(fdSample32) << 32 | UInt(fdSample32)
+        subject1 = BitArray(word: fdSample, bitCount: UInt.bitWidth, bitIterationDirection: .hi2lo)
+        XCTAssertEqual(String(reflecting: subject1), "BitArray([\(fdSample.fullHexadecimalString)])")
+        let rdSample32: UInt32 = 0xF0F0F0F0
+        let rdSample: UInt = UInt(rdSample32) << 32 | UInt(rdSample32)
+        subject1 = BitArray(word: fdSample, bitCount: UInt.bitWidth, bitIterationDirection: .lo2hi)
+        XCTAssertEqual(String(reflecting: subject1), "BitArray([\(rdSample.fullHexadecimalString)])")
+
+        // A word and a partial.
+        subject1 = BitArray(coreWords: [fdSample, fdSample], bitCount: UInt.bitWidth + 8, bitIterationDirection: .hi2lo)
+        XCTAssertEqual(String(reflecting: subject1), "BitArray([\(fdSample.fullHexadecimalString), 0F (8)])")
+        subject1 = BitArray(coreWords: [fdSample, fdSample], bitCount: UInt.bitWidth + 8, bitIterationDirection: .lo2hi)
+        XCTAssertEqual(String(reflecting: subject1), "BitArray([\(rdSample.fullHexadecimalString), F0 (8)])")
+
+        // Multiple words.
+        subject1 = BitArray(coreWords: [fdSample, rdSample], bitCount: 2 * UInt.bitWidth, bitIterationDirection: .hi2lo)
+        XCTAssertEqual(String(reflecting: subject1), "BitArray([\(fdSample.fullHexadecimalString), \(rdSample.fullHexadecimalString)])")
+        subject1 = BitArray(coreWords: [fdSample, rdSample], bitCount: 2 * UInt.bitWidth, bitIterationDirection: .lo2hi)
+        XCTAssertEqual(String(reflecting: subject1), "BitArray([\(rdSample.fullHexadecimalString), \(fdSample.fullHexadecimalString)])")
+
+        // Multiple words and a partial.
+        subject1 = BitArray(coreWords: [fdSample, rdSample, 0x5E], bitCount: 2 * UInt.bitWidth + 6, bitIterationDirection: .hi2lo)
+        XCTAssertEqual(String(reflecting: subject1), "BitArray([\(fdSample.fullHexadecimalString), \(rdSample.fullHexadecimalString), 00 (6)])")  // The set bits are too low-order to read!
+        subject1 = BitArray(coreWords: [fdSample, rdSample, 0x5E], bitCount: 2 * UInt.bitWidth + 6, bitIterationDirection: .lo2hi)
+        XCTAssertEqual(String(reflecting: subject1), "BitArray([\(rdSample.fullHexadecimalString), \(fdSample.fullHexadecimalString), 1E (6)])")
+    }
+
     // List of tests for Linux.
     static var allTests = [
         ("testPrimaryInitializer", testPrimaryInitializer),
@@ -585,6 +642,8 @@ class BitArrayTests: XCTestCase {
 
         ("testWordInitialization", testWordInitialization),
         ("testWordSequenceInitialization", testWordSequenceInitialization),
+
+        ("testDebugPrinting", testDebugPrinting),
     ]
 
 }
