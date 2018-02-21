@@ -82,6 +82,9 @@ extension FixedWidthInteger {
         return ~lowOrderBitsMask(count: bitWidth - count)
     }
 
+    /// A mask with only the most significant bit set.
+    static var highestOrderBitMask: Self { return highOrderBitsMask(count: 1) }
+
     /**
      Pushes out and returns the receiver's high-order bits while the low-order bits move up to make room for bits inserted at the least-significant end.
 

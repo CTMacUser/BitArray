@@ -142,6 +142,19 @@ class FixedWidthInteger_ExtensionsTests: XCTestCase {
         XCTAssertEqual((31 as UInt64).fullHexadecimalString, "000000000000001F")
     }
 
+    // Test the most-significant bit value.
+    func testMostSignificantBit() {
+        XCTAssertEqual(UInt8.highestOrderBitMask, 0x80)
+        XCTAssertEqual(UInt16.highestOrderBitMask, 0x8000)
+        XCTAssertEqual(UInt32.highestOrderBitMask, 0x80000000)
+        XCTAssertEqual(UInt64.highestOrderBitMask, 0x8000000000000000)
+
+        XCTAssertEqual(Int8.highestOrderBitMask, Int8.min)
+        XCTAssertEqual(Int16.highestOrderBitMask, Int16.min)
+        XCTAssertEqual(Int32.highestOrderBitMask, Int32.min)
+        XCTAssertEqual(Int64.highestOrderBitMask, Int64.min)
+    }
+
     // List of tests for Linux.
     static var allTests = [
         ("testBitReversal", testBitReversal),
@@ -154,6 +167,8 @@ class FixedWidthInteger_ExtensionsTests: XCTestCase {
 
         ("testHexadecimalDigitCount", testHexadecimalDigitCount),
         ("testFullHexadecimalString", testFullHexadecimalString),
+
+        ("testMostSignificantBit", testMostSignificantBit),
     ]
 
 }

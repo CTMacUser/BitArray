@@ -332,3 +332,55 @@ extension BitArray: CustomDebugStringConvertible {
     }
 
 }
+
+// MARK: Collection Interfaces
+
+/// A location of a specific `Bool` element within a `BitArray`.
+public struct BitArrayIndex {
+
+    /// The location of the word containing the targeted element.
+    let index: BitArray.WordArray.Index
+    /// The mask for the targeted element within its word.
+    let mask: BitArray.Word
+
+}
+
+extension BitArrayIndex: Equatable {
+
+    public static func ==(lhs: BitArrayIndex, rhs: BitArrayIndex) -> Bool {
+        return lhs.index == rhs.index && lhs.mask == rhs.mask
+    }
+
+}
+
+extension BitArrayIndex: Comparable {
+
+    public static func <(lhs: BitArrayIndex, rhs: BitArrayIndex) -> Bool {
+        return lhs.index < rhs.index || lhs.index == rhs.index && lhs.mask > rhs.mask
+    }
+
+}
+
+extension BitArray: Collection {
+
+    public var startIndex: BitArrayIndex {
+        return BitArrayIndex(index: bits.startIndex, mask: Word.highestOrderBitMask)
+    }
+
+    public var endIndex: BitArrayIndex {
+        return BitArrayIndex(index: bits.index(bits.startIndex, offsetBy: wholeWordCount), mask: Word.highestOrderBitMask >> remnantCount)
+    }
+
+    public subscript(position: BitArrayIndex) -> Bool {
+        return bits[position.index] & position.mask != 0
+    }
+
+    public func index(after i: BitArrayIndex) -> BitArrayIndex {
+        if i.mask > 1 {
+            return BitArrayIndex(index: i.index, mask: i.mask >> 1)
+        } else {
+            return BitArrayIndex(index: bits.index(after: i.index), mask: Word.highestOrderBitMask)
+        }
+    }
+
+}

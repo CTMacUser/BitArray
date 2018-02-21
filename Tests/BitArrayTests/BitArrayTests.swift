@@ -634,6 +634,76 @@ class BitArrayTests: XCTestCase {
         XCTAssertEqual(String(reflecting: subject1), "BitArray([\(rdSample.fullHexadecimalString), \(fdSample.fullHexadecimalString), 1E (6)])")
     }
 
+    // Test comparison and forward traversal of indices.
+    func testIndexComparisonAndForwardTraversal() {
+        // Empty.
+        var subject1 = BitArray(coreWords: [], bitCount: 0, bitIterationDirection: .hi2lo)
+        XCTAssertEqual(subject1.startIndex.index, subject1.bits.startIndex)
+        XCTAssertEqual(subject1.startIndex.mask, UInt.highestOrderBitMask)
+        XCTAssertEqual(subject1.startIndex, subject1.endIndex)
+        XCTAssertFalse(subject1.startIndex < subject1.endIndex)
+
+        // Partial word.
+        subject1 = BitArray(word: UInt.max, bitCount: 1, bitIterationDirection: .hi2lo)
+        XCTAssertNotEqual(subject1.startIndex, subject1.endIndex)
+        XCTAssertEqual(subject1.endIndex.index, subject1.bits.startIndex)
+        XCTAssertEqual(subject1.endIndex.mask, UInt.highestOrderBitMask >> 1)
+        XCTAssertLessThan(subject1.startIndex, subject1.endIndex)
+
+        XCTAssertEqual(subject1.index(after: subject1.startIndex), subject1.endIndex)
+
+        // Full word.
+        subject1 = BitArray(word: UInt.min, bitCount: UInt.bitWidth, bitIterationDirection: .lo2hi)
+        XCTAssertNotEqual(subject1.startIndex, subject1.endIndex)
+        XCTAssertEqual(subject1.bits.index(after: subject1.startIndex.index), subject1.endIndex.index)
+        XCTAssertEqual(subject1.endIndex.mask, UInt.highestOrderBitMask)
+        XCTAssertEqual(subject1.endIndex.index, subject1.bits.endIndex)
+        XCTAssertLessThan(subject1.startIndex, subject1.endIndex)
+
+        var testIndex = subject1.startIndex
+        (0 ..< (UInt.bitWidth - 1)).forEach { _ in subject1.formIndex(after: &testIndex) }
+        XCTAssertEqual(testIndex.index, subject1.bits.startIndex)
+        XCTAssertEqual(testIndex.mask, 1)
+        subject1.formIndex(after: &testIndex)
+        XCTAssertEqual(testIndex, subject1.endIndex)
+
+        // A full and partial word.
+        subject1 = BitArray(coreWords: [UInt.min, UInt.max], bitCount: UInt.bitWidth + 3, bitIterationDirection: .lo2hi)
+        XCTAssertLessThan(subject1.startIndex, subject1.endIndex)
+        XCTAssertLessThan(subject1.endIndex.index, subject1.bits.endIndex)
+        XCTAssertEqual(subject1.endIndex.mask, UInt.highestOrderBitMask >> 3)
+
+        var counter = 0
+        testIndex = subject1.startIndex
+        while testIndex < subject1.endIndex {
+            subject1.formIndex(after: &testIndex)
+            counter += 1
+        }
+        XCTAssertEqual(counter, UInt.bitWidth + 3)
+    }
+
+    // Test index dereferencing for reading elements.
+    func testReadElementFromIndex() {
+        // Empty.
+        var subject1 = BitArray(coreWords: [], bitCount: 0, bitIterationDirection: .lo2hi)
+        XCTAssertNil(subject1.first)
+
+        // One bit.
+        subject1 = BitArray(word: UInt.max, bitCount: 1, bitIterationDirection: .hi2lo)
+        XCTAssertEqual(subject1.first, true)
+        XCTAssertTrue(subject1[subject1.startIndex])
+        subject1 = BitArray(word: UInt.min, bitCount: 1, bitIterationDirection: .lo2hi)
+        XCTAssertEqual(subject1.first, false)
+        XCTAssertFalse(subject1[subject1.startIndex])
+
+        // 65 bits.
+        let allNybbles: UInt64 = 0x0123456789ABCDEF
+        var allNybbleBits = [Bool]()
+        (0..<64).forEach { allNybbleBits.append(allNybbles & (UInt64.highestOrderBitMask >> $0) != 0) }
+        subject1 = BitArray(words: [allNybbles, UInt64.highestOrderBitMask], bitCount: 65, bitIterationDirection: .hi2lo)
+        XCTAssertEqual(Array(subject1), allNybbleBits + [true])
+    }
+
     // List of tests for Linux.
     static var allTests = [
         ("testPrimaryInitializer", testPrimaryInitializer),
@@ -650,6 +720,9 @@ class BitArrayTests: XCTestCase {
         ("testWordSequenceInitialization", testWordSequenceInitialization),
 
         ("testDebugPrinting", testDebugPrinting),
+
+        ("testIndexComparisonAndForwardTraversal", testIndexComparisonAndForwardTraversal),
+        ("testReadElementFromIndex", testReadElementFromIndex),
     ]
 
 }
