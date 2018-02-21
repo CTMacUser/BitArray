@@ -704,6 +704,34 @@ class BitArrayTests: XCTestCase {
         XCTAssertEqual(Array(subject1), allNybbleBits + [true])
     }
 
+    // Test index dereferencing for writing elements.
+    func testWriteElementFromIndex() {
+        // Basic.
+        var subject1 = BitArray(word: UInt.max, bitCount: 1, bitIterationDirection: .lo2hi)
+        XCTAssertEqual(subject1.first, true)
+        subject1[subject1.startIndex] = false
+        XCTAssertEqual(subject1.first, false)
+        subject1[subject1.startIndex] = true
+        XCTAssertEqual(subject1.first, true)
+
+        // Swap.
+        subject1 = BitArray(word: 0x80 as UInt8, bitCount: 2, bitIterationDirection: .hi2lo)
+        XCTAssertEqual(Array(subject1), [true, false])
+        subject1.swapAt(subject1.startIndex, subject1.index(after: subject1.startIndex))
+        XCTAssertEqual(Array(subject1), [false, true])
+
+        // Partition.
+        subject1 = BitArray(word: 0xAF as UInt8, bitCount: 8, bitIterationDirection: .hi2lo)
+        var transitionIndex = subject1.startIndex
+        XCTAssertEqual(Array(subject1), [true, false, true, false, true, true, true, true])
+        (0..<2).forEach { _ in subject1.formIndex(after: &transitionIndex) }
+        XCTAssertEqual(subject1.partition(by: { $0 }), transitionIndex)
+        XCTAssertEqual(Array(subject1), [false, false, true, true, true, true, true, true])
+        (0..<(6 - 2)).forEach { _ in subject1.formIndex(after: &transitionIndex) }
+        XCTAssertEqual(subject1.partition(by: { !$0 }), transitionIndex)
+        XCTAssertEqual(Array(subject1), [true, true, true, true, true, true, false, false])
+    }
+
     // List of tests for Linux.
     static var allTests = [
         ("testPrimaryInitializer", testPrimaryInitializer),
@@ -723,6 +751,7 @@ class BitArrayTests: XCTestCase {
 
         ("testIndexComparisonAndForwardTraversal", testIndexComparisonAndForwardTraversal),
         ("testReadElementFromIndex", testReadElementFromIndex),
+        ("testWriteElementFromIndex", testWriteElementFromIndex),
     ]
 
 }

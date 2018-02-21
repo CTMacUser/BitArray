@@ -361,7 +361,7 @@ extension BitArrayIndex: Comparable {
 
 }
 
-extension BitArray: Collection {
+extension BitArray: MutableCollection {
 
     public var startIndex: BitArrayIndex {
         return BitArrayIndex(index: bits.startIndex, mask: Word.highestOrderBitMask)
@@ -372,7 +372,14 @@ extension BitArray: Collection {
     }
 
     public subscript(position: BitArrayIndex) -> Bool {
-        return bits[position.index] & position.mask != 0
+        get { return bits[position.index] & position.mask != 0 }
+        set {
+            if newValue {
+                bits[position.index] |= position.mask
+            } else {
+                bits[position.index] &= ~position.mask
+            }
+        }
     }
 
     public func index(after i: BitArrayIndex) -> BitArrayIndex {
