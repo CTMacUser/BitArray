@@ -732,6 +732,50 @@ class BitArrayTests: XCTestCase {
         XCTAssertEqual(Array(subject1), [true, true, true, true, true, true, false, false])
     }
 
+    // Test backward traversal of indices.
+    func testBackwardTraversal() {
+        // Empty.
+        var subject1 = BitArray(coreWords: [], bitCount: 0, bitIterationDirection: .hi2lo)
+        XCTAssertNil(subject1.last)
+
+        // Partial word.
+        subject1 = BitArray(word: UInt.max, bitCount: 1, bitIterationDirection: .hi2lo)
+        XCTAssertLessThan(subject1.startIndex, subject1.endIndex)
+        XCTAssertEqual(subject1.index(before: subject1.endIndex), subject1.startIndex)
+
+        // Full word.
+        subject1 = BitArray(word: UInt.min, bitCount: UInt.bitWidth, bitIterationDirection: .lo2hi)
+        XCTAssertLessThan(subject1.startIndex, subject1.endIndex)
+        XCTAssertEqual(subject1.endIndex.index, subject1.bits.endIndex)
+        XCTAssertEqual(subject1.endIndex.mask, UInt.highestOrderBitMask)
+
+        var testIndex = subject1.endIndex
+        subject1.formIndex(before: &testIndex)
+        XCTAssertEqual(testIndex.index, subject1.bits.startIndex)
+        XCTAssertEqual(testIndex.mask, 1)
+        (0 ..< (UInt.bitWidth - 1)).forEach { _ in subject1.formIndex(before: &testIndex) }
+        XCTAssertEqual(testIndex, subject1.startIndex)
+
+        // A full and partial word.
+        subject1 = BitArray(coreWords: [UInt.min, UInt.max], bitCount: UInt.bitWidth + 3, bitIterationDirection: .lo2hi)
+        XCTAssertLessThan(subject1.startIndex, subject1.endIndex)
+        XCTAssertLessThan(subject1.endIndex.index, subject1.bits.endIndex)
+        XCTAssertEqual(subject1.endIndex.mask, UInt.highestOrderBitMask >> 3)
+
+        var counter = 0
+        testIndex = subject1.endIndex
+        while testIndex > subject1.startIndex {
+            subject1.formIndex(before: &testIndex)
+            counter += 1
+        }
+        XCTAssertEqual(counter, UInt.bitWidth + 3)
+
+        // Reverse.
+        subject1 = BitArray(word: 0xAF as UInt8, bitCount: 8, bitIterationDirection: .hi2lo)
+        subject1.reverse()
+        XCTAssertEqual(subject1.bits, [UInt(0xF5) << (UInt.bitWidth - 8)])
+    }
+
     // List of tests for Linux.
     static var allTests = [
         ("testPrimaryInitializer", testPrimaryInitializer),
@@ -752,6 +796,7 @@ class BitArrayTests: XCTestCase {
         ("testIndexComparisonAndForwardTraversal", testIndexComparisonAndForwardTraversal),
         ("testReadElementFromIndex", testReadElementFromIndex),
         ("testWriteElementFromIndex", testWriteElementFromIndex),
+        ("testBackwardTraversal", testBackwardTraversal),
     ]
 
 }
