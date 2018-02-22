@@ -701,7 +701,7 @@ class BitArrayTests: XCTestCase {
         var allNybbleBits = [Bool]()
         (0..<64).forEach { allNybbleBits.append(allNybbles & (UInt64.highestOrderBitMask >> $0) != 0) }
         subject1 = BitArray(words: [allNybbles, UInt64.highestOrderBitMask], bitCount: 65, bitIterationDirection: .hi2lo)
-        XCTAssertEqual(Array(subject1), allNybbleBits + [true])
+        XCTAssertTrue(subject1.elementsEqual(allNybbleBits + [true]))
     }
 
     // Test index dereferencing for writing elements.
@@ -716,20 +716,20 @@ class BitArrayTests: XCTestCase {
 
         // Swap.
         subject1 = BitArray(word: 0x80 as UInt8, bitCount: 2, bitIterationDirection: .hi2lo)
-        XCTAssertEqual(Array(subject1), [true, false])
+        XCTAssertTrue(subject1.elementsEqual([true, false]))
         subject1.swapAt(subject1.startIndex, subject1.index(after: subject1.startIndex))
-        XCTAssertEqual(Array(subject1), [false, true])
+        XCTAssertTrue(subject1.elementsEqual([false, true]))
 
         // Partition.
         subject1 = BitArray(word: 0xAF as UInt8, bitCount: 8, bitIterationDirection: .hi2lo)
         var transitionIndex = subject1.startIndex
-        XCTAssertEqual(Array(subject1), [true, false, true, false, true, true, true, true])
+        XCTAssertTrue(subject1.elementsEqual([true, false, true, false, true, true, true, true]))
         (0..<2).forEach { _ in subject1.formIndex(after: &transitionIndex) }
         XCTAssertEqual(subject1.partition(by: { $0 }), transitionIndex)
-        XCTAssertEqual(Array(subject1), [false, false, true, true, true, true, true, true])
+        XCTAssertTrue(subject1.elementsEqual([false, false, true, true, true, true, true, true]))
         (0..<(6 - 2)).forEach { _ in subject1.formIndex(after: &transitionIndex) }
         XCTAssertEqual(subject1.partition(by: { !$0 }), transitionIndex)
-        XCTAssertEqual(Array(subject1), [true, true, true, true, true, true, false, false])
+        XCTAssertTrue(subject1.elementsEqual([true, true, true, true, true, true, false, false]))
     }
 
     // Test backward traversal of indices.

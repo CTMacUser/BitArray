@@ -368,7 +368,7 @@ extension BitArray: MutableCollection, BidirectionalCollection {
     }
 
     public var endIndex: BitArrayIndex {
-        return BitArrayIndex(index: bits.index(bits.startIndex, offsetBy: wholeWordCount), mask: Word.highestOrderBitMask >> remnantCount)
+        return BitArrayIndex(index: bits.index(bits.endIndex, offsetBy: -remnantCount.signum()), mask: Word.highestOrderBitMask >> remnantCount)
     }
 
     public subscript(position: BitArrayIndex) -> Bool {
@@ -383,19 +383,19 @@ extension BitArray: MutableCollection, BidirectionalCollection {
     }
 
     public func index(after i: BitArrayIndex) -> BitArrayIndex {
-        if i.mask > 1 {
-            return BitArrayIndex(index: i.index, mask: i.mask >> 1)
-        } else {
+        guard i.mask > 1 else {
             return BitArrayIndex(index: bits.index(after: i.index), mask: Word.highestOrderBitMask)
         }
+
+        return BitArrayIndex(index: i.index, mask: i.mask >> 1)
     }
 
     public func index(before i: BitArrayIndex) -> BitArrayIndex {
-        if i.mask < Word.highestOrderBitMask {
-            return BitArrayIndex(index: i.index, mask: i.mask << 1)
-        } else {
+        guard i.mask < Word.highestOrderBitMask else {
             return BitArrayIndex(index: bits.index(before: i.index), mask: 1)
         }
+
+        return BitArrayIndex(index: i.index, mask: i.mask << 1)
     }
 
 }
