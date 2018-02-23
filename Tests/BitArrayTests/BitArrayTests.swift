@@ -776,6 +776,43 @@ class BitArrayTests: XCTestCase {
         XCTAssertEqual(subject1.bits, [UInt(0xF5) << (UInt.bitWidth - 8)])
     }
 
+    // Test random-access traversal of indices.
+    func testRandomAccess() {
+        // Empty.
+        var subject1 = BitArray(coreWords: [], bitCount: 0, bitIterationDirection: .hi2lo)
+        XCTAssertEqual(subject1.index(subject1.startIndex, offsetBy: 0), subject1.endIndex)
+        XCTAssertEqual(subject1.index(subject1.endIndex, offsetBy: 0), subject1.startIndex)
+        XCTAssertEqual(subject1.distance(from: subject1.startIndex, to: subject1.endIndex), 0)
+        XCTAssertEqual(subject1.distance(from: subject1.endIndex, to: subject1.startIndex), 0)
+
+        // Not empty.
+        let testElementCount = UInt64.bitWidth * 2 + UInt8.bitWidth
+        let elementBlockCount = testElementCount / 64 + (testElementCount % 64).signum()
+        subject1 = BitArray(words: repeatElement(0x0123456789ABCDEF as UInt64, count: elementBlockCount), bitCount: testElementCount, bitIterationDirection: .hi2lo)
+        let indexCount = testElementCount + 1
+        var fi = subject1.startIndex, bi = subject1.endIndex
+        var fIndices = [BitArrayIndex](), bIndices = [BitArrayIndex]()
+        fIndices.reserveCapacity(indexCount)
+        bIndices.reserveCapacity(indexCount)
+        for _ in 0..<indexCount {
+            fIndices.append(fi)
+            bIndices.insert(bi, at: bIndices.startIndex)
+            subject1.formIndex(after: &fi)
+            subject1.formIndex(before: &bi)
+        }
+        XCTAssertEqual(fIndices, bIndices)
+        var offsets = Array(0...testElementCount)
+        for i in fIndices {
+            let iOffsets = bIndices.map { subject1.distance(from: i, to: $0) }
+            XCTAssertEqual(iOffsets, offsets)
+            let iIndices = iOffsets.map { subject1.index(i, offsetBy: $0) }
+            XCTAssertEqual(iIndices, bIndices)
+            for j in offsets.indices {
+                offsets[j] -= 1
+            }
+        }
+    }
+
     // List of tests for Linux.
     static var allTests = [
         ("testPrimaryInitializer", testPrimaryInitializer),
@@ -797,6 +834,7 @@ class BitArrayTests: XCTestCase {
         ("testReadElementFromIndex", testReadElementFromIndex),
         ("testWriteElementFromIndex", testWriteElementFromIndex),
         ("testBackwardTraversal", testBackwardTraversal),
+        ("testRandomAccess", testRandomAccess),
     ]
 
 }

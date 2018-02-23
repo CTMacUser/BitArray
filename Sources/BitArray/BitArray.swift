@@ -361,7 +361,7 @@ extension BitArrayIndex: Comparable {
 
 }
 
-extension BitArray: MutableCollection, BidirectionalCollection {
+extension BitArray: MutableCollection, RandomAccessCollection {
 
     public var startIndex: BitArrayIndex {
         return BitArrayIndex(index: bits.startIndex, mask: Word.highestOrderBitMask)
@@ -396,6 +396,30 @@ extension BitArray: MutableCollection, BidirectionalCollection {
         }
 
         return BitArrayIndex(index: i.index, mask: i.mask << 1)
+    }
+
+    public func index(_ i: BitArrayIndex, offsetBy n: Int) -> BitArrayIndex {
+        let (wordShift, bitShift) = n.quotientAndRemainder(dividingBy: Word.bitWidth)
+        var newIndex = bits.index(i.index, offsetBy: wordShift)
+        var newMaskOffset = i.mask.leadingZeroBitCount + bitShift
+        assert(0...(2 * (Word.bitWidth - 1)) ~= abs(newMaskOffset))
+        if newMaskOffset < 0 {
+            newMaskOffset += Word.bitWidth
+            bits.formIndex(before: &newIndex)
+        } else if newMaskOffset >= Word.bitWidth {
+            newMaskOffset -= Word.bitWidth
+            bits.formIndex(after: &newIndex)
+        }
+        assert(0..<Word.bitWidth ~= newMaskOffset)
+        return BitArrayIndex(index: newIndex, mask: Word.highestOrderBitMask >> newMaskOffset)
+    }
+
+    public func distance(from start: BitArrayIndex, to end: BitArrayIndex) -> Int {
+        // Sneak in an invariant check.
+        precondition(start.mask.nonzeroBitCount == 1)
+        precondition(end.mask.nonzeroBitCount == 1)
+
+        return bits.distance(from: start.index, to: end.index) * Word.bitWidth + (end.mask.leadingZeroBitCount - start.mask.leadingZeroBitCount)
     }
 
 }
