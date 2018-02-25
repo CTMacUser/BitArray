@@ -813,6 +813,86 @@ class BitArrayTests: XCTestCase {
         }
     }
 
+    // Test replacement of elements.
+    func testRangeReplacement() {
+        // Boolean-sequence Initializer.
+        let bulkTrue = repeatElement(true, count: UInt.bitWidth)
+        let aeArray = [true, false, true, false, true, true, true, false]
+        var subject1 = BitArray([AnyRandomAccessCollection(bulkTrue), AnyRandomAccessCollection(aeArray)].joined())
+        XCTAssertEqual(subject1.bits, [UInt.max, UInt(0xAE) << (UInt.bitWidth - 8)])
+        XCTAssertEqual(subject1.remnantCount, aeArray.count)
+
+        // Default Initializer.
+        subject1 = BitArray()
+        XCTAssertTrue(subject1.bits.isEmpty)
+        XCTAssertEqual(subject1.remnantCount, 0)
+        XCTAssertEqual(subject1.startIndex, subject1.endIndex)
+
+        // Replace with a bit.
+        subject1.replaceSubrange(subject1.startIndex..<subject1.endIndex, with: [true])
+        XCTAssertEqual(subject1.bits.count, 1)
+        XCTAssertEqual(subject1.remnantCount, 1)
+        XCTAssertEqual(subject1.first, true)
+
+        // Append a bit.
+        subject1.append(false)
+        XCTAssertEqual(subject1.bits.count, 1)
+        XCTAssertEqual(subject1.remnantCount, 2)
+        XCTAssertEqual(subject1.first, true)
+        XCTAssertEqual(subject1.last, false)
+
+        // Inserting an empty source: no change.
+        subject1.insert(contentsOf: EmptyCollection(), at: subject1.startIndex)
+        XCTAssertEqual(subject1.bits.count, 1)
+        XCTAssertEqual(subject1.remnantCount, 2)
+        subject1.insert(contentsOf: EmptyCollection(), at: subject1.index(after: subject1.startIndex))
+        XCTAssertEqual(subject1.bits.count, 1)
+        XCTAssertEqual(subject1.remnantCount, 2)
+        subject1.insert(contentsOf: EmptyCollection(), at: subject1.endIndex)
+        XCTAssertEqual(subject1.bits.count, 1)
+        XCTAssertEqual(subject1.remnantCount, 2)
+
+        // Prepend a bit.
+        subject1.insert(false, at: subject1.startIndex)
+        XCTAssertTrue(subject1.elementsEqual([false, true, false]))
+
+        // Inserting non-empty into the middle.
+        subject1.insert(contentsOf: [false, true], at: subject1.index(after: subject1.startIndex))
+        XCTAssertTrue(subject1.elementsEqual([false, false, true, true, false]))
+
+        // Removal from middle.
+        subject1.removeSubrange(subject1.index(after: subject1.startIndex)..<subject1.index(before: subject1.endIndex))
+        XCTAssertTrue(subject1.elementsEqual([false, false]))
+
+        // Replace first, then last.
+        subject1 = BitArray([true, false])
+        subject1.replaceSubrange(...subject1.startIndex, with: [false])
+        XCTAssertTrue(subject1.elementsEqual([false, false]))
+        subject1.replaceSubrange(subject1.index(after: subject1.startIndex)..., with: [true])
+        XCTAssertTrue(subject1.elementsEqual([false, true]))
+
+        // Removing an empty range: no change.
+        subject1.removeSubrange(..<subject1.startIndex)
+        XCTAssertTrue(subject1.elementsEqual([false, true]))
+        subject1.removeSubrange(subject1.index(after: subject1.startIndex)..<subject1.index(before: subject1.endIndex))
+        XCTAssertTrue(subject1.elementsEqual([false, true]))
+        subject1.removeSubrange(subject1.endIndex...)
+        XCTAssertTrue(subject1.elementsEqual([false, true]))
+
+        // Truncate from either end.
+        subject1 = BitArray([false, true, false, true, false])
+        subject1.removeSubrange(..<subject1.index(subject1.startIndex, offsetBy: +2))
+        XCTAssertTrue(subject1.elementsEqual([false, true, false]))
+        subject1.removeSubrange(subject1.index(subject1.endIndex, offsetBy: -2)...)
+        XCTAssertTrue(subject1.elementsEqual([false]))
+
+        // Replace middle.
+        subject1 = BitArray(repeatElement(false, count: 7))
+        XCTAssertTrue(subject1.elementsEqual([false, false, false, false, false, false, false]))
+        subject1.replaceSubrange(subject1.index(subject1.startIndex, offsetBy: +1)...subject1.index(subject1.endIndex, offsetBy: -3), with: repeatElement(true, count: 3))
+        XCTAssertTrue(subject1.elementsEqual([false, true, true, true, false, false]))
+    }
+
     // List of tests for Linux.
     static var allTests = [
         ("testPrimaryInitializer", testPrimaryInitializer),
@@ -835,6 +915,7 @@ class BitArrayTests: XCTestCase {
         ("testWriteElementFromIndex", testWriteElementFromIndex),
         ("testBackwardTraversal", testBackwardTraversal),
         ("testRandomAccess", testRandomAccess),
+        ("testRangeReplacement", testRangeReplacement),
     ]
 
 }

@@ -361,7 +361,7 @@ extension BitArrayIndex: Comparable {
 
 }
 
-extension BitArray: MutableCollection, RandomAccessCollection {
+extension BitArray: MutableCollection, RandomAccessCollection, RangeReplaceableCollection {
 
     public var startIndex: BitArrayIndex {
         return BitArrayIndex(index: bits.startIndex, mask: Word.highestOrderBitMask)
@@ -420,6 +420,70 @@ extension BitArray: MutableCollection, RandomAccessCollection {
         precondition(end.mask.nonzeroBitCount == 1)
 
         return bits.distance(from: start.index, to: end.index) * Word.bitWidth + (end.mask.leadingZeroBitCount - start.mask.leadingZeroBitCount)
+    }
+
+    public init<S>(_ elements: S) where S: Sequence, S.Element == Element {
+        let (ucq, ucr) = elements.underestimatedCount.quotientAndRemainder(dividingBy: Word.bitWidth)
+        var newBits = WordArray()
+        newBits.reserveCapacity(ucq + ucr.signum())
+        var elementCount = 0
+        var mask = Word()
+        var lastIndex = newBits.endIndex
+        for element in elements {
+            elementCount += 1
+            if mask == 0 {
+                mask = Word.highestOrderBitMask
+                newBits.append(0)
+                lastIndex = newBits.index(before: newBits.endIndex)
+            }
+            if element {
+                newBits[lastIndex] |= mask
+            }
+            mask >>= 1
+        }
+        self.init(coreWords: newBits, bitCount: elementCount, bitIterationDirection: .hi2lo)
+    }
+
+    public init() {
+        self.init(coreWords: EmptyCollection(), bitCount: 0, bitIterationDirection: .hi2lo)
+    }
+
+    public mutating func replaceSubrange<C>(_ subrange: Range<Index>, with newElements: C) where C: Collection, C.Element == Element {
+        precondition(startIndex <= subrange.lowerBound)
+        precondition(subrange.lowerBound <= subrange.upperBound)
+        precondition(subrange.upperBound <= endIndex)
+
+        // No change if nothing gets added and nothing gets removed.
+        let newBits = BitArray(newElements)
+        guard !newBits.bits.isEmpty || !subrange.isEmpty else { return }
+
+        // Something has to change.
+        switch (subrange.lowerBound, subrange.upperBound) {
+        case (startIndex, endIndex):
+            // Total replacement.
+            bits.replaceSubrange(bits.startIndex..., with: newBits.bits)
+            remnantCount = newBits.remnantCount
+        case (startIndex, let e) where startIndex < e:
+            // Truncate head.
+            truncateHead(bitCount: distance(from: startIndex, to: e))
+            fallthrough
+        case (_, startIndex):
+            // Prepend.
+            prependHead(newBits)
+        case (let s, endIndex) where s < endIndex:
+            // Truncate tail.
+            truncateTail(bitCount: distance(from: s, to: endIndex))
+            fallthrough
+        case (endIndex, _):
+            // Append.
+            appendTail(newBits)
+        default:
+            // Mid-collection insertion (empty subrange), removal (empty newBits), or swap-out (neither empty).
+            let replacementHead = head(bitCount: distance(from: startIndex, to: subrange.lowerBound))
+            truncateHead(bitCount: distance(from: startIndex, to: subrange.upperBound))
+            prependHead(newBits)
+            prependHead(replacementHead)
+        }
     }
 
 }
