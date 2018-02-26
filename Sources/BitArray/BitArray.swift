@@ -486,4 +486,29 @@ extension BitArray: MutableCollection, RandomAccessCollection, RangeReplaceableC
         }
     }
 
+    // MARK: Optimizations
+
+    public var isEmpty: Bool {
+        // When there's no bits stored, no fully- nor partially-used words are stored, so "bits" is empty.
+        return bits.isEmpty
+    }
+
+    public var count: Int {
+        // Just tweak the calculations needed for "endIndex".
+        return (bits.count - remnantCount.signum()) * Word.bitWidth + remnantCount
+    }
+
+    public init(repeating repeatedValue: Element, count: Int) {
+        // All-1s or all-0s can be set in bulk with word-level ~0 and 0.
+        let (wordCount, leftOverBitCount) = count.quotientAndRemainder(dividingBy: Word.bitWidth)
+        let repeatedWordCount = wordCount + leftOverBitCount.signum()
+        let repeatedWordValue = repeatedValue ? Word.max : Word.min
+        self.init(coreWords: repeatElement(repeatedWordValue, count: repeatedWordCount), bitCount: count, bitIterationDirection: .hi2lo)
+    }
+
+    public mutating func append<S>(contentsOf newElements: S) where S: Sequence, S.Element == Element {
+        // The default code tries to reserve space then repeatedly call the single-element version.  With the way newly-inserted values are created before storage, a bulk-add is a lot more efficient.
+        appendTail(BitArray(newElements))
+    }
+
 }

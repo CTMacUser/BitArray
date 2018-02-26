@@ -883,6 +883,66 @@ class BitArrayTests: XCTestCase {
         XCTAssertTrue(subject1.elementsEqual([false, true, true, true, false, false]))
     }
 
+    // Test members that have to be reoptimized.
+    func testOptimizedMembers() {
+        // Empty.
+        var subject1 = BitArray()
+        XCTAssertTrue(subject1.isEmpty)
+        XCTAssertEqual(subject1.count, 0)
+
+        XCTAssertNil(subject1.last)  // secretly calls "isEmpty"
+
+        // Bulk append.
+        let fiveAsDecendingNybble = [false, true, false, true]
+        subject1.append(contentsOf: fiveAsDecendingNybble)
+        XCTAssertFalse(subject1.isEmpty)
+        XCTAssertEqual(subject1.count, 4)
+        XCTAssertTrue(subject1.elementsEqual(fiveAsDecendingNybble))
+        XCTAssertEqual(subject1.remnantCount, 4)
+        XCTAssertEqual(subject1.bits, [UInt(5) << (UInt.bitWidth - 4)])
+
+        // Block set.
+        XCTAssertTrue(BitArray(repeating: false, count: 0).isEmpty)
+        XCTAssertTrue(BitArray(repeating: true, count: 0).isEmpty)
+
+        subject1 = BitArray(repeating: false, count: UInt.bitWidth)
+        XCTAssertFalse(subject1.isEmpty)
+        XCTAssertEqual(subject1.count, UInt.bitWidth)
+        XCTAssertTrue(subject1.elementsEqual(repeatElement(false, count: UInt.bitWidth)))
+        XCTAssertEqual(subject1.remnantCount, 0)
+        XCTAssertEqual(subject1.bits, [0])
+
+        subject1 = BitArray(repeating: true, count: UInt.bitWidth + 16)
+        XCTAssertFalse(subject1.isEmpty)
+        XCTAssertEqual(subject1.count, UInt.bitWidth + 16)
+        XCTAssertTrue(subject1.elementsEqual(repeatElement(true, count: UInt.bitWidth + 16)))
+        XCTAssertEqual(subject1.remnantCount, 16)
+        XCTAssertEqual(subject1.bits, [UInt.max, UInt(0xFFFF) << (UInt.bitWidth - 16)])
+
+        // More bulk set and append.
+        subject1.append(contentsOf: EmptyCollection())
+        XCTAssertTrue(subject1.elementsEqual(repeatElement(true, count: UInt.bitWidth + 16)))  // no change
+
+        subject1 = BitArray(repeating: true, count: 4)
+        XCTAssertFalse(subject1.isEmpty)
+        XCTAssertEqual(subject1.count, 4)
+        XCTAssertTrue(subject1.elementsEqual(repeatElement(true, count: 4)))
+        XCTAssertEqual(subject1.remnantCount, 4)
+        XCTAssertEqual(subject1.bits, [UInt(0xF) << (UInt.bitWidth - 4)])
+        subject1.append(contentsOf: fiveAsDecendingNybble)
+        XCTAssertFalse(subject1.isEmpty)
+        XCTAssertEqual(subject1.count, 8)
+        XCTAssertTrue(subject1.elementsEqual(repeatElement(true, count: 4) + fiveAsDecendingNybble))
+        XCTAssertEqual(subject1.remnantCount, 8)
+        XCTAssertEqual(subject1.bits, [UInt(0xF5) << (UInt.bitWidth - 8)])
+        subject1.reverse()  // secretly calls "isEmpty"
+        XCTAssertFalse(subject1.isEmpty)
+        XCTAssertEqual(subject1.count, 8)
+        XCTAssertTrue(subject1.elementsEqual(fiveAsDecendingNybble.reversed() + repeatElement(true, count: 4)))
+        XCTAssertEqual(subject1.remnantCount, 8)
+        XCTAssertEqual(subject1.bits, [UInt(0xAF) << (UInt.bitWidth - 8)])
+    }
+
     // List of tests for Linux.
     static var allTests = [
         ("testPrimaryInitializer", testPrimaryInitializer),
@@ -906,6 +966,7 @@ class BitArrayTests: XCTestCase {
         ("testBackwardTraversal", testBackwardTraversal),
         ("testRandomAccess", testRandomAccess),
         ("testRangeReplacement", testRangeReplacement),
+        ("testOptimizedMembers", testOptimizedMembers),
     ]
 
 }
