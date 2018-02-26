@@ -511,4 +511,20 @@ extension BitArray: MutableCollection, RandomAccessCollection, RangeReplaceableC
         appendTail(BitArray(newElements))
     }
 
+    // MARK: Enhancements
+
+    public mutating func reserveCapacity(_ n: Int) {
+        let (wordCount, leftoverBitCount) = n.quotientAndRemainder(dividingBy: Word.bitWidth)
+        bits.reserveCapacity(wordCount + leftoverBitCount.signum())
+    }
+
+}
+
+// MARK: Unique Functionality
+
+extension BitArray {
+
+    /// The count of elements that can be stored without allocating new storage.
+    public var capacity: Int { return bits.capacity * Word.bitWidth }
+
 }

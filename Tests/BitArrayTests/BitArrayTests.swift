@@ -943,6 +943,42 @@ class BitArrayTests: XCTestCase {
         XCTAssertEqual(subject1.bits, [UInt(0xAF) << (UInt.bitWidth - 8)])
     }
 
+    // Test mutating and inspecting element capacity.
+    func testCapacity() {
+        // Empty.
+        var subject1 = BitArray()
+        XCTAssertTrue(subject1.isEmpty)
+        XCTAssertGreaterThanOrEqual(subject1.capacity, 0)
+
+        subject1.reserveCapacity(10)
+        XCTAssertTrue(subject1.isEmpty)
+        XCTAssertGreaterThanOrEqual(subject1.capacity, 10)
+        XCTAssertGreaterThanOrEqual(subject1.capacity, UInt.bitWidth)
+
+        // Not empty.
+        subject1.replaceSubrange(subject1.startIndex..., with: BitArray(repeating: true, count: 4))
+        XCTAssertEqual(subject1.count, 4)
+        XCTAssertGreaterThanOrEqual(subject1.capacity, UInt.bitWidth)
+
+        subject1 = BitArray(repeating: false, count: 65)
+        XCTAssertFalse(subject1.isEmpty)
+        XCTAssertGreaterThanOrEqual(subject1.capacity, 2 * UInt.bitWidth)
+
+        // Can't reduce capacity below count.
+        subject1.reserveCapacity(17)
+        XCTAssertEqual(subject1.count, 65)
+        XCTAssertGreaterThanOrEqual(subject1.capacity, 2 * UInt.bitWidth)
+
+        // Empty again.
+        subject1.removeAll(keepingCapacity: true)
+        XCTAssertTrue(subject1.isEmpty)
+        XCTAssertGreaterThanOrEqual(subject1.capacity, 2 * UInt.bitWidth)
+
+        subject1.removeAll()
+        XCTAssertTrue(subject1.isEmpty)
+        XCTAssertGreaterThanOrEqual(subject1.capacity, 0)
+    }
+
     // List of tests for Linux.
     static var allTests = [
         ("testPrimaryInitializer", testPrimaryInitializer),
@@ -967,6 +1003,7 @@ class BitArrayTests: XCTestCase {
         ("testRandomAccess", testRandomAccess),
         ("testRangeReplacement", testRangeReplacement),
         ("testOptimizedMembers", testOptimizedMembers),
+        ("testCapacity", testCapacity),
     ]
 
 }
