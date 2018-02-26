@@ -734,12 +734,8 @@ class BitArrayTests: XCTestCase {
 
     // Test backward traversal of indices.
     func testBackwardTraversal() {
-        // Empty.
-        var subject1 = BitArray(coreWords: [], bitCount: 0, bitIterationDirection: .hi2lo)
-        XCTAssertNil(subject1.last)
-
         // Partial word.
-        subject1 = BitArray(word: UInt.max, bitCount: 1, bitIterationDirection: .hi2lo)
+        var subject1 = BitArray(word: UInt.max, bitCount: 1, bitIterationDirection: .hi2lo)
         XCTAssertLessThan(subject1.startIndex, subject1.endIndex)
         XCTAssertEqual(subject1.index(before: subject1.endIndex), subject1.startIndex)
 
@@ -769,11 +765,6 @@ class BitArrayTests: XCTestCase {
             counter += 1
         }
         XCTAssertEqual(counter, UInt.bitWidth + 3)
-
-        // Reverse.
-        subject1 = BitArray(word: 0xAF as UInt8, bitCount: 8, bitIterationDirection: .hi2lo)
-        subject1.reverse()
-        XCTAssertEqual(subject1.bits, [UInt(0xF5) << (UInt.bitWidth - 8)])
     }
 
     // Test random-access traversal of indices.
@@ -838,8 +829,7 @@ class BitArrayTests: XCTestCase {
         subject1.append(false)
         XCTAssertEqual(subject1.bits.count, 1)
         XCTAssertEqual(subject1.remnantCount, 2)
-        XCTAssertEqual(subject1.first, true)
-        XCTAssertEqual(subject1.last, false)
+        XCTAssertTrue(subject1.elementsEqual([true, false]))
 
         // Inserting an empty source: no change.
         subject1.insert(contentsOf: EmptyCollection(), at: subject1.startIndex)
