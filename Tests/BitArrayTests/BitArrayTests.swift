@@ -979,6 +979,118 @@ class BitArrayTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(subject1.capacity, 0)
     }
 
+    // Test printing.
+    func testPrinting() {
+        // Empty.
+        XCTAssertEqual(String(describing: BitArray()), "[]")
+
+        // One element.
+        XCTAssertEqual(String(describing: BitArray([false])), "[false]")
+        XCTAssertEqual(String(describing: BitArray([true])), "[true]")
+
+        // Multiple elements.
+        XCTAssertEqual(String(describing: BitArray(word: 0xAE as UInt8, bitCount: 8, bitIterationDirection: .hi2lo)), "[true, false, true, false, true, true, true, false]")
+    }
+
+    // Test equality.
+    func testEquality() {
+        // Empty.
+        var subject1 = BitArray()
+        var subject2 = BitArray([])
+        XCTAssertTrue(subject1.isEmpty)
+        XCTAssertTrue(subject2.isEmpty)
+        XCTAssertTrue(subject1 == subject2)
+        XCTAssertFalse(subject1 != subject2)
+
+        // Different word lengths.
+        subject2 = BitArray(repeating: true, count: 16)
+        XCTAssertEqual(subject2.count, 16)
+        XCTAssertTrue(subject1 != subject2)
+        XCTAssertFalse(subject1 == subject2)
+
+        // Different remnant counts.
+        subject1 = BitArray(repeating: false, count: 20)
+        subject2 = BitArray([false, false, false])
+        XCTAssertEqual(subject1.bits, subject2.bits)
+        XCTAssertNotEqual(subject1, subject2)
+
+        // Same, non-empty.
+        subject2.append(contentsOf: repeatElement(false, count: 17))
+        XCTAssertEqual(subject1, subject2)
+    }
+
+    // Test reading.
+    func testReading() {
+        // Bad: empty input.
+        XCTAssertNil(BitArray(""))
+
+        // Bad: doesn't start and/or end with the proper bracket.
+        XCTAssertNil(BitArray("[["))
+        XCTAssertNil(BitArray("]]"))
+        XCTAssertNil(BitArray("false"))
+        XCTAssertNil(BitArray("[true"))
+        XCTAssertNil(BitArray("false]"))
+
+        // Bad: same as before, with extraneous spaces.
+        XCTAssertNil(BitArray("        "))
+        XCTAssertNil(BitArray("  [   [    "))
+        XCTAssertNil(BitArray("    ]   ]  "))
+        XCTAssertNil(BitArray("  true  "))
+        XCTAssertNil(BitArray(" [ false  "))
+        XCTAssertNil(BitArray("  true ] "))
+
+        // Empty.
+        XCTAssertEqual(BitArray("[]"), BitArray())
+        XCTAssertEqual(BitArray(" [  ]   "), BitArray())
+
+        // Bad: multiple empties.
+        XCTAssertNil(BitArray("[,]"))
+        XCTAssertNil(BitArray("[, ]"))
+        XCTAssertNil(BitArray("  [  ,  ,  ]  "))
+
+        // Single element.
+        XCTAssertEqual(BitArray("[true]"), BitArray([true]))
+        XCTAssertEqual(BitArray("[false]"), BitArray([false]))
+
+        XCTAssertEqual(BitArray("[true,]"), BitArray([true]))
+        XCTAssertEqual(BitArray("[false,]"), BitArray([false]))
+
+        XCTAssertEqual(BitArray("   [true , ]     "), BitArray([true]))
+        XCTAssertEqual(BitArray("[   false   ,   ]"), BitArray([false]))
+
+        // Bad: unknown word.
+        XCTAssertNil(BitArray("[True]"))
+        XCTAssertNil(BitArray("[FALSE]"))
+
+        // Bad: mulitple and/or leading empties
+        XCTAssertNil(BitArray("[, false]"))
+        XCTAssertNil(BitArray("[true,,]"))
+
+        // Multiple elements.
+        XCTAssertEqual(BitArray("[true,false]"), BitArray([true, false]))
+        XCTAssertEqual(BitArray("[false, true, false, ]"), BitArray([false, true, false]))
+
+        // Bad: wrong word and/or non-last empties.
+        XCTAssertNil(BitArray("[false, true, no, ]"))
+        XCTAssertNil(BitArray("[true, , no, ]"))
+        XCTAssertNil(BitArray("[true, , false]"))
+    }
+
+    // Test initialization from an array literal.
+    func testArrayLiterals() {
+        // Empty.
+        let subject1: BitArray = []
+        XCTAssertTrue(subject1.isEmpty)
+
+        // Single term.
+        XCTAssertEqual(BitArray([true]), [true])
+        XCTAssertNotEqual(BitArray([true]), [false])
+
+        // Mixed terms.
+        XCTAssertNotEqual(BitArray([true]), [])
+        XCTAssertNotEqual(BitArray([true]), [false, true])
+    }
+
     // List of tests for Linux.
     static var allTests = [
         ("testPrimaryInitializer", testPrimaryInitializer),
@@ -1004,6 +1116,11 @@ class BitArrayTests: XCTestCase {
         ("testRangeReplacement", testRangeReplacement),
         ("testOptimizedMembers", testOptimizedMembers),
         ("testCapacity", testCapacity),
+
+        ("testPrinting", testPrinting),
+        ("testEquality", testEquality),
+        ("testReading", testReading),
+        ("testArrayLiterals", testArrayLiterals),
     ]
 
 }

@@ -520,6 +520,58 @@ extension BitArray: MutableCollection, RandomAccessCollection, RangeReplaceableC
 
 }
 
+// MARK: More Basic Functionality
+
+extension BitArray: Equatable {
+
+    public static func ==(lhs: BitArray, rhs: BitArray) -> Bool {
+        // Since the unused bits in a trailing word should be canonized to zero, this should work.
+        return lhs.bits == rhs.bits && lhs.remnantCount == rhs.remnantCount
+    }
+
+}
+
+extension BitArray: CustomStringConvertible {
+
+    public var description: String {
+        return "[\(map { String(describing: $0) }.joined(separator: ", "))]"
+    }
+
+}
+
+extension BitArray: LosslessStringConvertible {
+
+    public init?(_ description: String) {
+        // Strip spaces; allow any amount to surround any term or punctuator, not just one only after each comma.
+        var scratch: String = description.split(separator: " ").joined()
+
+        // Confirm and remove surrounding brackets.
+        guard let openBracket = scratch.first, openBracket == "[" else { return nil }
+        scratch.removeFirst()
+        guard let closeBracket = scratch.last, closeBracket == "]" else { return nil }
+        scratch.removeLast()
+
+        // Extract and validate the Boolean value terms.  Only the last (or only) term may be empty.
+        var terms = scratch.split(separator: ",", omittingEmptySubsequences: false).map { String($0) }
+        if let lastTerm = terms.popLast(), !lastTerm.isEmpty {
+            terms.append(lastTerm)
+        }
+        let booleans = terms.flatMap { Bool($0) }
+        guard terms.count == booleans.count else { return nil }
+
+        self.init(booleans)
+    }
+
+}
+
+extension BitArray: ExpressibleByArrayLiteral {
+
+    public init(arrayLiteral elements: Bool...) {
+        self.init(elements)
+    }
+
+}
+
 // MARK: Unique Functionality
 
 extension BitArray {
